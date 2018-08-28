@@ -1,0 +1,101 @@
+# models.py
+class Filter(models.Model):
+
+    website_value = models.CharField(max_length=600,
+                                     null=True,
+                                     blank=True)
+
+    website_display = models.CharField(max_length=600,
+                                       null=True,
+                                       blank=True)
+
+    def __str__(self):
+        return self.website_display
+        
+
+# views.py (SearchResultsAPIView around line 291)
+checkbox_pk_list = json.loads(data.get('checkbox_pk_list'))
+checkbox_values = []
+for checkbox_pk in checkbox_pk_list:
+	checkbox_values.append(Filter.objects.get(pk=checkbox_pk).website_value)
+	
+
+# views.py (After execute_search around 327)
+results = filter_checkbox(results, checkbox_values)
+results_strict = filter_checkbox(results_strict, checkbox_values)
+results_score = filter_checkbox(results_score, checkbox_values)
+results_score_strict = filter_checkbox(results_score_strict, checkbox_values)
+
+
+# views_utils.py (After load_the_dictionary function)
+def filter_checkbox(results, checkbox_values):
+    try:
+        final_result = []
+        if len(checkbox_values)==0:
+            return results
+
+        list_of_websites = []
+        for checkbox_value in checkbox_values:
+            list_of_websites += checkbox_value.split(",")
+
+        for result in results:
+            parsed_uri = urlparse(result.link)
+            base_url = '{uri.scheme}://{uri.netloc}/'.format(uri=parsed_uri)
+            if base_url in list_of_websites:
+                final_result.append(result)
+                print("appended", base_url)
+        return final_result
+    except Exception as e:
+		logger.error("Error filter_checkbox %s", str(e))
+        return results
+
+
+
+# init.js (Around 475 line)
+checkbox_pk_list = []
+for(i=0;i<$('input[type=checkbox]:checked').length;i++)
+{
+    check_id = $('.checkbox_class')[i].id.split("_")[1]
+    console.log("This is pk", check_id)
+    checkbox_pk_list.push(check_id);
+}
+
+
+# init.js (Inside ajax's data, around line 492)
+"checkbox_pk_list": JSON.stringify(checkbox_pk_list)
+
+
+
+
+# init.js (Around line 375)
+function append_checkbox()
+{
+    $.ajax({
+        
+        url: '/search/get_checkboxes/',
+        type: 'POST',
+        data: {
+        },
+        success: function(data) {
+            console.log("success fetching response!", data);
+            checkboxes_html = ""
+            filter_values = data['website_value_display']
+            filter_pk = data['website_pk_list']
+            for(i=0;i<filter_values.length;i++)
+            {
+                checkboxes_html += `
+              <input class="checkbox_class" type="checkbox" id="check_`+filter_pk[i]+`">
+              <label for="check_`+filter_pk[i]+`">`+filter_values[i]+`</label>&nbsp;
+            `
+            }
+            console.log("hererer", checkboxes_html);
+            $('#checkbox_div').html(checkboxes_html);
+        },
+        error: function(xhr, textstatus, errorthrown) {
+            console.log("Error: "+errorthrown+xhr.status+xhr.responseText);
+        }
+    });
+}
+
+append_checkbox();
+
