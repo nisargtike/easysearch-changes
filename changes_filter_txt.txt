@@ -99,3 +99,40 @@ function append_checkbox()
 
 append_checkbox();
 
+
+#views.py
+class GetCheckboxesAPI(APIView):
+
+    authentication_classes = (
+        CsrfExemptSessionAuthentication, BasicAuthentication)
+
+    def post(self, request, *args, **kwargs):
+        response = {}
+        try:
+            logger.debug("Entered post GetCheckboxes")
+
+            response['status'] = 200
+            data = request.data
+
+            filter_objs = Filter.objects.all()
+
+            website_pk_list = []
+            website_display_list = []
+
+            for filter_obj in filter_objs:
+                website_pk_list.append(filter_obj.pk)
+                website_display_list.append(filter_obj.website_display)
+
+            response['website_pk_list'] = website_pk_list
+            response['website_value_display'] = website_display_list
+            response['status'] = 200
+
+        except Exception as e:
+            logger.error("Error post GetCheckboxes %s", str(e))
+            print("Error ", str(e))
+            response['status'] = 400
+
+        response = Response(data=response)
+
+        return response
+
